@@ -1,36 +1,49 @@
-import requests, sys, os, io
+from PyQt5.QtGui import QPixmap
+from PyQt5 import QtCore, QtWidgets
+from PyQt5 import uic
+from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtCore import Qt
+
+import sys
+
+class MapWidget(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        uic.loadUi("design.ui", self)
+        self.initUi()
+
+    def initUi(self):
+        self.map_image.setPixmap(QPixmap("Wait_img.jpg"))
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        elif event.key() == Qt.Key_PageUp:
+            pass
+        elif event.key() == Qt.Key_PageDown:
+            pass
+        elif event.key() == Qt.Key_Down:
+            pass
+        elif event.key() == Qt.Key_Up:
+            pass
+        elif event.key() == Qt.Key_Left:
+            pass
+        elif event.key() == Qt.Key_Right:
+            pass
+        else:
+            print(event.key())
 
 
-class Map:
-    def __init__(self, ll, spn, l):
-        self.ll = ll
-        self.spn = spn
-        self.l = l
-        self.api_server = "http://static-maps.yandex.ru/1.x/"
-        self.pt = None
-
-    def get_picture(self):
-        map_params = {
-            "ll": self.ll,
-            "spn": self.spn,
-            "l": self.l,
-            "pt": self.pt
-            }
-        response = requests.get(self.api_server, params=map_params)
-        img = io.BytesIO(response.content)
-        return img
-
-    def make_pt(self, pt_ll):
-        self.pt = pt_ll
-
-    def move(self, direct):
-        if direct == 'left':
-            self.ll[0] -= 0.1 * self.spn
-        elif direct == 'right':
-            self.ll[0] += 0.1 * self.spn
-        elif direct == 'up':
-            self.ll[1] += 0.1 * self.spn
-        elif direct =='down':
-            self.ll[1] -= 0.1 * self.spn
+def main():
+    try:
+        app = QtWidgets.QApplication(sys.argv)
+        window = MapWidget()
+        window.show()
+        app.exec_()
+    except Exception as e:
+        print(e)
 
 
+if __name__ == '__main__':
+    main()
