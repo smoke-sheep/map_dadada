@@ -17,8 +17,8 @@ class Map:
             "pt": self.pt
             }
         response = requests.get(self.api_server, params=map_params)
-        img = io.BytesIO(response.content)
-        return img
+        # img = io.BytesIO(response.content)
+        return response.content
 
     def make_pt(self, pt_ll):
         self.pt = pt_ll
