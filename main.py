@@ -22,15 +22,11 @@ class Map:
 
     def make_pt(self, pt_ll):
         self.pt = pt_ll
-
-    def move(self, direct):
-        if direct == 'left':
-            self.ll[0] -= 0.1 * self.spn
-        elif direct == 'right':
-            self.ll[0] += 0.1 * self.spn
-        elif direct == 'up':
-            self.ll[1] += 0.1 * self.spn
-        elif direct =='down':
-            self.ll[1] -= 0.1 * self.spn
+    
+    def zoom(self, spn, direct):
+        if direct == 'zoom_in':
+            self.spn = spn + 0.1
+        elif direct == 'zoom_away':
+            self.spn = spn - 0.1
 
 
