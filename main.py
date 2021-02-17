@@ -19,9 +19,26 @@ class MapWidget(QtWidgets.QMainWindow):
 
     def initUi(self):
         self.map_image.setPixmap(QPixmap("Wait_img.jpg"))
-        #self.update_picture()
+
+        for i in range(0, 3):
+            getattr(self, f"radioButton_{i}").clicked.connect(self.radio_button_clicked)
+        self.radioButton_0.setChecked(True)
+        self.setFocusPolicy(Qt.WheelFocus)
+
+        self.request_button.clicked.connect(self.line_request)
+
+    def line_request(self):
+        print("hghf")
+        data = self.request_line.text()
+        if data != "":
+            self.operate_map.find_adress(data)
+        self.update_picture()
+
+    def radio_button_clicked(self):
+        self.operate_map.change_l(self.sender().text())
 
     def update_picture(self):
+        print("updating picture")
         self.map_image.setPixmap(QPixmap("Wait_img.jpg"))
         with open(self.map_file, "wb") as file:
             file.write(self.operate_map.get_picture())
