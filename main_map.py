@@ -7,6 +7,8 @@ MAPS_VIEW = {
     "Гибрид": "sat,skl"
 }
 
+ADDRESS_NOT_FOUND = False
+
 
 class Map:
     def __init__(self, ll, spn, l):
@@ -30,7 +32,7 @@ class Map:
             'll': f"{self.ll[0]},{self.ll[1]}",
             'l': self.l,
             'spn': f"{self.spn},{self.spn}",
-            'pt': f"{self.pt[0]},{self.pt[1]}"
+            'pt': f"{self.pt[0]},{self.pt[1]}" if self.pt is not None else None
         }
         # response = requests.get("http://static-maps.yandex.ru/1.x/?ll=37.530887,55.703118&spn=0.002,0.002&l=map")
         response = requests.get(self.api_server, params=map_params)
@@ -65,8 +67,11 @@ class Map:
         print("search address")
 
         new_ll = [*get_coordinates(adress)]
-        self.ll = new_ll
-        self.pt = new_ll
+        if new_ll[0] is None:
+            return ADDRESS_NOT_FOUND
+
+        self.ll = new_ll[:]
+        self.pt = new_ll[:]
         output = geocode(adress)['metaDataProperty']['GeocoderMetaData']['Address']['formatted']
         if postal_code:
             output += geocode(adress)['metaDataProperty']['GeocoderMetaData']['Address']['postal_code']

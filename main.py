@@ -1,4 +1,4 @@
-from main_map import Map
+from main_map import Map, ADDRESS_NOT_FOUND
 
 from PyQt5.QtGui import QPixmap
 from PyQt5 import QtCore, QtWidgets
@@ -26,12 +26,23 @@ class MapWidget(QtWidgets.QMainWindow):
         self.setFocusPolicy(Qt.WheelFocus)
 
         self.request_button.clicked.connect(self.line_request)
+        self.dump_button.clicked.connect(self.dump_request)
 
     def line_request(self):
-        print("hghf")
+        self.status_label.setText("request address")
+
         data = self.request_line.text()
         if data != "":
-            self.operate_map.find_adress(data)
+            if self.operate_map.find_adress(data) is not ADDRESS_NOT_FOUND:
+                self.update_picture()
+            else:
+                self.status_label.setText("error in address request")
+        else:
+            self.status_label.setText("request line is void")
+
+    def dump_request(self):
+        self.request_line.setText("")
+        self.operate_map.delete_pt()
         self.update_picture()
 
     def radio_button_clicked(self):
@@ -39,11 +50,15 @@ class MapWidget(QtWidgets.QMainWindow):
 
     def update_picture(self):
         print("updating picture")
+        self.status_label.setText("updating picture")
+
         self.map_image.setPixmap(QPixmap("Wait_img.jpg"))
         with open(self.map_file, "wb") as file:
             file.write(self.operate_map.get_picture())
         self.pixmap = QPixmap(self.map_file)
         self.map_image.setPixmap(self.pixmap)
+
+        self.status_label.setText("picture is draw")
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:

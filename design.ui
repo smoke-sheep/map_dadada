@@ -149,6 +149,32 @@
      <string>Найти</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="dump_button">
+    <property name="geometry">
+     <rect>
+      <x>860</x>
+      <y>310</y>
+      <width>100</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Сброс</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="status_label">
+    <property name="geometry">
+     <rect>
+      <x>730</x>
+      <y>730</y>
+      <width>500</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
