@@ -1,5 +1,5 @@
 from main_map import Map, ADDRESS_NOT_FOUND
-
+import math
 from PyQt5.QtGui import QPixmap
 from PyQt5 import QtCore, QtWidgets
 from PyQt5 import uic
@@ -13,7 +13,7 @@ class MapWidget(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.map_file = "map.png"
-        self.operate_map = Map([37.530887, 55.703118], 0.02, "map")
+        self.operate_map = Map([37.530887, 55.703118], 1, "map")
         uic.loadUi("design.ui", self)
         self.initUi()
 
@@ -83,6 +83,39 @@ class MapWidget(QtWidgets.QMainWindow):
             self.update_picture()
         else:
             print(event.key())
+
+    # pos - координата клика мышки
+    def screen_to_geo(self, pos):
+        LAT_STEP = 0.008  # Шаги при движении карты по широте и долготе
+        LON_STEP = 0.02
+        coord_to_geo_x = 0.0000428  # Пропорции пиксельных и географических координат.
+        coord_to_geo_y = 0.0000428
+        dy = 225 - pos[1]
+        dx = pos[0] - 300
+        lon = self.operate_map.ll[0]
+        lat = self.operate_map.ll[1]
+        zoom = self.operate_map.zom
+        lx = lon + dx * coord_to_geo_x * math.pow(2, 15 - zoom)
+        ly = lat + dy * coord_to_geo_y * math.cos(math.radians(lat)) * math.pow(2, 15 - zoom)
+        return lx, ly
+
+    def mouseReleaseEvent(self, event):
+        if not 700 > event.x() > 100 and not 550 > event.y() > 100:
+            return
+        # x = event.x() - 100
+        # y = event.y() - 100
+        # x_pxls = self.pxls_in_lon()
+        # y_pxls = self.pxls_in_lat()
+        # ll_0 = [self.operate_map.ll[0] - 300 / x_pxls, self.operate_map.ll[1] - 225 / y_pxls]
+        # self.operate_map.find_adress(ll_0[0] + x * x_pxls, ll_0[1] + y * y_pxls, century_map=False)
+        # self.update_picture()
+        x, y = self.screen_to_geo((event.x() - 100, event.y() - 100))
+        # self.operate_map.find_adress(x, y, century_map=False)
+        self.operate_map.pt = [x, y]
+        self.update_picture()
+
+
+
 
 
 def main():
