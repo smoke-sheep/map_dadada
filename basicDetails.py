@@ -1,0 +1,1 @@
+OPERATE_MAP_FILE = "__map__.png"
