@@ -1,19 +1,25 @@
+from basicDetails import *
 from main_map import Map, ADDRESS_NOT_FOUND
+from mapStream import mapStream
 import math
 from PyQt5.QtGui import QPixmap
 from PyQt5 import QtCore, QtWidgets
 from PyQt5 import uic
 from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtCore import Qt
-
+from business import *
 import sys
+import os
+
+INDEX_NOT_SHOW = False
+INDEX_SHOW = True
 
 
 class MapWidget(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.map_file = "map.png"
-        self.operate_map = Map([37.530887, 55.703118], 1, "map")
+        self.operate_map = Map([37.530887, 55.703118], 10, "map")
+        self.address = self.operate_map.formatted_address('37.530887,55.703118')
         uic.loadUi("design.ui", self)
         self.initUi()
 
@@ -28,13 +34,50 @@ class MapWidget(QtWidgets.QMainWindow):
         self.request_button.clicked.connect(self.line_request)
         self.dump_button.clicked.connect(self.dump_request)
 
+        self.index_show_status = INDEX_NOT_SHOW
+        self.index_checkBox.stateChanged.connect(self.change_index_show_status)
+
+        self.thread = QtCore.QThread()  # создаем поток
+        self.mapStream = mapStream()
+        self.mapStream.moveToThread(self.thread)
+        self.mapStream.newImage.connect(self.print_image)  # подключаем события
+        self.mapStream.newAddress.connect(self.print_address)
+        self.mapStream.mapError.connect(self.map_error)
+        self.thread.started.connect(self.mapStream.run)
+        self.thread.start()  # запустим поток
+        self.update_picture()
+
+    @QtCore.pyqtSlot(str)
+    def map_error(self, data):
+        print(data)
+
+    @QtCore.pyqtSlot(str)
+    def print_address(self, data):
+        self.full_address_line.setText(data)
+
+    @QtCore.pyqtSlot(bool)
+    def print_image(self, dat):
+        self.pixmap = QPixmap(OPERATE_MAP_FILE)
+        self.map_image.setPixmap(self.pixmap)
+
+    def change_index_show_status(self):
+        self.index_show_status = not self.index_show_status
+        map_data = self.operate_map.formatted_address(self.address, postal_code=self.index_show_status)
+        self.full_address_line.setText(map_data)
+        self.update_picture()
+        print(self.index_show_status)
+
     def line_request(self):
         self.status_label.setText("request address")
 
-        data = self.request_line.text()
-        if data != "":
-            if self.operate_map.find_adress(data) is not ADDRESS_NOT_FOUND:
+        self.address = self.request_line.text()
+        print(f"address:{self.address}")
+        if self.address != "":
+            map_data = self.operate_map.find_adress(self.address, postal_code=self.index_show_status)
+            if map_data is not ADDRESS_NOT_FOUND:
                 self.update_picture()
+                print(map_data)
+                self.full_address_line.setText(map_data)
             else:
                 self.status_label.setText("error in address request")
         else:
@@ -42,6 +85,7 @@ class MapWidget(QtWidgets.QMainWindow):
 
     def dump_request(self):
         self.request_line.setText("")
+        self.full_address_line.setText("")
         self.operate_map.delete_pt()
         self.update_picture()
 
@@ -53,9 +97,9 @@ class MapWidget(QtWidgets.QMainWindow):
         self.status_label.setText("updating picture")
 
         self.map_image.setPixmap(QPixmap("Wait_img.jpg"))
-        with open(self.map_file, "wb") as file:
+        with open(OPERATE_MAP_FILE, "wb") as file:
             file.write(self.operate_map.get_picture())
-        self.pixmap = QPixmap(self.map_file)
+        self.pixmap = QPixmap(OPERATE_MAP_FILE)
         self.map_image.setPixmap(self.pixmap)
 
         self.status_label.setText("picture is draw")
@@ -64,10 +108,10 @@ class MapWidget(QtWidgets.QMainWindow):
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_PageUp:
-            self.operate_map.zoom("zoom_in")
+            self.operate_map.change_zoom("zoom_in")
             self.update_picture()
         elif event.key() == Qt.Key_PageDown:
-            self.operate_map.zoom("zoom_away")
+            self.operate_map.change_zoom("zoom_away")
             self.update_picture()
         elif event.key() == Qt.Key_Down:
             self.operate_map.move("down")
@@ -84,38 +128,28 @@ class MapWidget(QtWidgets.QMainWindow):
         else:
             print(event.key())
 
-    # pos - координата клика мышки
-    def screen_to_geo(self, pos):
-        LAT_STEP = 0.008  # Шаги при движении карты по широте и долготе
-        LON_STEP = 0.02
-        coord_to_geo_x = 0.0000428  # Пропорции пиксельных и географических координат.
-        coord_to_geo_y = 0.0000428
-        dy = 225 - pos[1]
-        dx = pos[0] - 300
-        lon = self.operate_map.ll[0]
-        lat = self.operate_map.ll[1]
-        zoom = self.operate_map.zom
-        lx = lon + dx * coord_to_geo_x * math.pow(2, 15 - zoom)
-        ly = lat + dy * coord_to_geo_y * math.cos(math.radians(lat)) * math.pow(2, 15 - zoom)
-        return lx, ly
+    def closeEvent(self, event):
+        os.remove(OPERATE_MAP_FILE)
+
 
     def mouseReleaseEvent(self, event):
         if not 700 > event.x() > 100 and not 550 > event.y() > 100:
             return
-        # x = event.x() - 100
-        # y = event.y() - 100
-        # x_pxls = self.pxls_in_lon()
-        # y_pxls = self.pxls_in_lat()
-        # ll_0 = [self.operate_map.ll[0] - 300 / x_pxls, self.operate_map.ll[1] - 225 / y_pxls]
-        # self.operate_map.find_adress(ll_0[0] + x * x_pxls, ll_0[1] + y * y_pxls, century_map=False)
-        # self.update_picture()
-        x, y = self.screen_to_geo((event.x() - 100, event.y() - 100))
-        # self.operate_map.find_adress(x, y, century_map=False)
+        x, y = self.operate_map.screen_to_geo((event.x() - 100, event.y() - 100))
         self.operate_map.pt = [x, y]
-        self.update_picture()
-
-
-
+        if event.button() == Qt.LeftButton:
+            self.full_address_line.setText(self.operate_map.formatted_address(f"{x},{y}", postal_code=self.index_show_status))
+            self.update_picture()
+        elif event.button() == Qt.RightButton:
+            # print(f'x:{x}, y:{y}, {x},{y}')
+            # print('jjjjj', find_business('Аптека', f'{x},{y}', '0.00045045045,0.00045045045'))
+            # self.full_address_line.setText(find_business('Аптека', f'{x},{y}', '1,1')['geometry']['coordinates']['properties']['CompanyMetaData']['name'])
+            try:
+                org = find_business('', f'{x},{y}', '0.00045045045,0.00045045045')['properties']['CompanyMetaData']['name']
+            except TypeError:
+                org = None
+            self.full_address_line.setText(org if org else 'Организация не найдена')
+            self.update_picture()
 
 
 def main():
