@@ -1,6 +1,8 @@
 from basicDetails import *
 from main_map import Map, ADDRESS_NOT_FOUND
 from mapStream import mapStream
+from business import *
+from geocoder import *
 
 from PyQt5.QtGui import QPixmap
 from PyQt5 import QtCore, QtWidgets
@@ -18,7 +20,9 @@ INDEX_SHOW = True
 class MapWidget(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.operate_map = Map([37.530887, 55.703118], 0.02, "map")
+        self.operate_map = Map(get_coordinates(START_ADDRESS), START_ZOOM, "map")
+        self.address = START_ADDRESS
+        self.organisation_type = "Продукты"
         uic.loadUi("design.ui", self)
         self.initUi()
 
@@ -29,6 +33,10 @@ class MapWidget(QtWidgets.QMainWindow):
             getattr(self, f"radioButton_{i}").clicked.connect(self.radio_button_clicked)
         self.radioButton_0.setChecked(True)
         self.setFocusPolicy(Qt.WheelFocus)
+
+        for i in range(3, 13):
+            getattr(self, f"radioButton_{i}").clicked.connect(self.choice_organisation_type)
+        self.radioButton_3.setChecked(True)
 
         self.request_button.clicked.connect(self.line_request)
         self.dump_button.clicked.connect(self.dump_request)
@@ -58,17 +66,24 @@ class MapWidget(QtWidgets.QMainWindow):
         self.pixmap = QPixmap(OPERATE_MAP_FILE)
         self.map_image.setPixmap(self.pixmap)
 
+    def choice_organisation_type(self):
+        self.organisation_type = self.sender().text()
+
     def change_index_show_status(self):
         self.index_show_status = not self.index_show_status
-        self.line_request()
+        if self.address != "":
+            map_data = self.operate_map.formatted_address(self.address, postal_code=self.index_show_status)
+            self.full_address_line.setText(map_data)
+            #self.update_picture()
         print(self.index_show_status)
 
     def line_request(self):
         self.status_label.setText("request address")
 
-        data = self.request_line.text()
-        if data != "":
-            map_data = self.operate_map.find_adress(data, postal_code=self.index_show_status)
+        self.address = self.request_line.text()
+        print(f"address:{self.address}")
+        if self.address != "":
+            map_data = self.operate_map.find_adress(self.address, postal_code=self.index_show_status)
             if map_data is not ADDRESS_NOT_FOUND:
                 self.update_picture()
                 print(map_data)
@@ -81,8 +96,10 @@ class MapWidget(QtWidgets.QMainWindow):
     def dump_request(self):
         self.request_line.setText("")
         self.full_address_line.setText("")
-        self.operate_map.delete_pt()
-        self.update_picture()
+        self.address = START_ADDRESS
+        map_data = self.operate_map.find_adress(START_ADDRESS)
+        if map_data is not ADDRESS_NOT_FOUND:
+            self.update_picture()
 
     def radio_button_clicked(self):
         self.operate_map.change_l(self.sender().text())
@@ -103,28 +120,54 @@ class MapWidget(QtWidgets.QMainWindow):
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_PageUp:
-            self.operate_map.zoom("zoom_in")
-            #self.update_picture()
+            self.operate_map.change_zoom("zoom_in")
+            self.update_picture()
         elif event.key() == Qt.Key_PageDown:
-            self.operate_map.zoom("zoom_away")
-            #self.update_picture()
+            self.operate_map.change_zoom("zoom_away")
+            self.update_picture()
         elif event.key() == Qt.Key_Down:
             self.operate_map.move("down")
-            #self.update_picture()
+            self.update_picture()
         elif event.key() == Qt.Key_Up:
             self.operate_map.move("up")
-            #self.update_picture()
+            self.update_picture()
         elif event.key() == Qt.Key_Left:
             self.operate_map.move("left")
-            #self.update_picture()
+            self.update_picture()
         elif event.key() == Qt.Key_Right:
             self.operate_map.move("right")
-            #self.update_picture()
+            self.update_picture()
         else:
             print(event.key())
 
     def closeEvent(self, event):
         os.remove(OPERATE_MAP_FILE)
+
+    def mouseReleaseEvent(self, event):
+        self.request_line.setText("")
+        self.full_address_line.setText("")
+        self.address = ""
+
+        print(f"mouse event: {event.x()},{event.y()}")
+        if not 700 > event.x() > 100 and not 550 > event.y() > 100:
+            return
+        x, y = self.operate_map.screen_to_geo((event.x() - 100, event.y() - 100))
+        self.operate_map.pt = [x, y]
+        if event.button() == Qt.LeftButton:
+            self.full_address_line.setText(self.operate_map.formatted_address(f"{x},{y}", postal_code=self.index_show_status))
+            self.update_picture()
+        elif event.button() == Qt.RightButton:
+            # print(f'x:{x}, y:{y}, {x},{y}')
+            # print('jjjjj', find_business('Аптека', f'{x},{y}', '0.00045045045,0.00045045045'))
+            # self.full_address_line.setText(find_business('Аптека', f'{x},{y}', '1,1')['geometry']['coordinates']['properties']['CompanyMetaData']['name'])
+            try:
+                print("поиск организации")
+                org = find_business(self.organisation_type, f'{x},{y}', '0.00045045045,0.00045045045')['properties']['CompanyMetaData']['name']
+                print(org)
+            except TypeError:
+                org = None
+            self.full_address_line.setText(org if org else 'Организация не найдена')
+            self.update_picture()
 
 
 def main():
