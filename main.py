@@ -1,5 +1,5 @@
 from basicDetails import *
-from main_map import Map, ADDRESS_NOT_FOUND, formatted_address
+from main_map import ADDRESS_NOT_FOUND, formatted_address
 from mapStream import mapStream
 from business import *
 from geocoder import *
@@ -7,7 +7,6 @@ from geocoder import *
 from PyQt5.QtGui import QPixmap
 from PyQt5 import QtCore, QtWidgets
 from PyQt5 import uic
-from PyQt5.QtWidgets import QFileDialog
 from PyQt5.QtCore import Qt
 
 import sys
@@ -20,7 +19,6 @@ INDEX_SHOW = True
 class MapWidget(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        #self.operate_map = Map(get_coordinates(START_ADDRESS), START_ZOOM, "map")
         self.address = START_ADDRESS
         self.organisation_type = "Продукты"
         uic.loadUi("design.ui", self)
@@ -45,7 +43,7 @@ class MapWidget(QtWidgets.QMainWindow):
         self.index_checkBox.stateChanged.connect(self.change_index_show_status)
 
         self.thread = QtCore.QThread()  # создаем поток
-        self.operate_map = mapStream(get_coordinates(START_ADDRESS), START_ZOOM, "map")
+        self.operate_map = mapStream(get_coordinates(START_ADDRESS), START_ZOOM, START_VISION)
         self.operate_map.moveToThread(self.thread)
         self.operate_map.newImage.connect(self.print_image)  # подключаем события
         self.operate_map.newAddress.connect(self.print_address)
@@ -131,12 +129,12 @@ class MapWidget(QtWidgets.QMainWindow):
 
         self.request_line.setText("")
         self.full_address_line.setText("")
-        self.address = ""
 
         x, y = self.operate_map.screen_to_geo((event.x() - 100, event.y() - 100))
         self.operate_map.pt = [x, y]
         if event.button() == Qt.LeftButton:
-            self.full_address_line.setText(formatted_address(f"{x},{y}", postal_code=self.index_show_status))
+            self.address = formatted_address(f"{x},{y}", postal_code=self.index_show_status)
+            self.full_address_line.setText(self.address)
         elif event.button() == Qt.RightButton:
             try:
                 print("поиск организации")

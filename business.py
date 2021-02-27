@@ -32,5 +32,3 @@ def find_business(place, ll, spn, locale='ru_RU'):
     if orgs:
         print(orgs)
         return orgs[0]
-# print(find_business('', '-74.1931684,4.603364492015153', '1,1'))
-

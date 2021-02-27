@@ -1,4 +1,3 @@
-import requests, sys, os, io
 from geocoder import *
 import math
 MAPS_VIEW = {
@@ -12,11 +11,23 @@ IMAGE_SIZE = [600, 450]
 IMAGE_POS = [100, 100]
 
 
+MAX_MOVE_Y = 85
+MIN_MOVE_Y = -MAX_MOVE_Y
+MAX_MOVE_X = 175
+MIN_MOVE_X = -MAX_MOVE_X
+
 ZOOM_STEP = 1
-MAX_MOVE = 85
-MIN_MOVE = -85
 MAX_ZOOM = 15
 MIN_ZOOM = 3
+
+LAT_STEP = 0.008  # Шаги при движении карты по широте и долготе
+LON_STEP = 0.02
+
+# Пропорции пиксельных и географических координат.
+COORD_TO_GEO_X = 0.0000428
+COORD_TO_GEO_Y = 0.0000428
+
+API_SERVER = "http://static-maps.yandex.ru/1.x/"
 
 
 def formatted_address(adress, postal_code=False):
@@ -36,7 +47,7 @@ class Map:
         self.ll = [0, 0]
         self.zoom = 1
         self.l = "map"
-        self.api_server = "http://static-maps.yandex.ru/1.x/"
+        self.api_server = API_SERVER
         self.pt = None
 
     def map_settings(self, ll, zoom, l):
@@ -45,28 +56,16 @@ class Map:
         self.l = l
 
     def screen_to_geo(self, pos):
-        LAT_STEP = 0.008  # Шаги при движении карты по широте и долготе
-        LON_STEP = 0.02
-        coord_to_geo_x = 0.0000428  # Пропорции пиксельных и географических координат.
-        coord_to_geo_y = 0.0000428
         dy = 225 - pos[1]
         dx = pos[0] - 300
         lon = self.ll[0]
         lat = self.ll[1]
         zoom = self.zoom
-        lx = lon + dx * coord_to_geo_x * math.pow(2, 15 - zoom)
-        ly = lat + dy * coord_to_geo_y * math.cos(math.radians(lat)) * math.pow(2, 15 - zoom)
+        lx = lon + dx * COORD_TO_GEO_X * math.pow(2, MAX_ZOOM - zoom)
+        ly = lat + dy * COORD_TO_GEO_Y * math.cos(math.radians(lat)) * math.pow(2, MAX_ZOOM - zoom)
         return lx, ly
 
     def get_picture(self):
-        # map_params = {
-        #     "ll": self.ll,
-        #     "spn": f"{self.spn},{self.spn}",
-        #     "l": self.l,
-        #     # "pt": self.pt
-        #     }
-        # print(self.ll, self.spn, self.l)
-        # print("request picture")
         print(f"ll: {self.ll}; pt: {self.pt}", self.zoom)
         map_params = {
             'll': f"{self.ll[0]},{self.ll[1]}",
@@ -74,7 +73,6 @@ class Map:
             'z': self.zoom,
             'pt': f"{self.pt[0]},{self.pt[1]}" if self.pt is not None else None
         }
-        # response = requests.get("http://static-maps.yandex.ru/1.x/?ll=37.530887,55.703118&spn=0.002,0.002&l=map")
         response = requests.get(self.api_server, params=map_params)
         return response.content
 
@@ -82,24 +80,18 @@ class Map:
         self.pt = pt_ll
 
     def move(self, direct):
-        # self.screen_to_geo(IMAGE_SIZE[0] / 2 + IMAGE_POS[0], IMAGE_SIZE[1] / 2 + IMAGE_POS[1])
-        # print("move card")
         if direct == 'left':
-            if MIN_MOVE < self.screen_to_geo((0, IMAGE_SIZE[1] / 2))[0] < MAX_MOVE:
+            if MIN_MOVE_X < self.screen_to_geo((0, IMAGE_SIZE[1] / 2))[0] < MAX_MOVE_X:
                 new_ll = self.screen_to_geo((0, IMAGE_SIZE[1] / 2))
-            # self.ll[0] -= k
         elif direct == 'right':
-            if MIN_MOVE < self.screen_to_geo((IMAGE_SIZE[0], IMAGE_SIZE[1] / 2))[0] < MAX_MOVE:
+            if MIN_MOVE_X < self.screen_to_geo((IMAGE_SIZE[0], IMAGE_SIZE[1] / 2))[0] < MAX_MOVE_X:
                 new_ll = self.screen_to_geo((IMAGE_SIZE[0], IMAGE_SIZE[1] / 2))
-            # self.ll[0] += k
         elif direct == 'down':
-            if MIN_MOVE < self.screen_to_geo((IMAGE_SIZE[0] / 2, IMAGE_SIZE[1]))[1] < MAX_MOVE:
+            if MIN_MOVE_Y < self.screen_to_geo((IMAGE_SIZE[0] / 2, IMAGE_SIZE[1]))[1] < MAX_MOVE_Y:
                 new_ll = self.screen_to_geo((IMAGE_SIZE[0] / 2, IMAGE_SIZE[1]))
-            # self.ll[1] += k
         elif direct == 'up':
-            if MIN_MOVE < self.screen_to_geo((IMAGE_SIZE[0] / 2, 0))[1] < MAX_MOVE:
+            if MIN_MOVE_Y < self.screen_to_geo((IMAGE_SIZE[0] / 2, 0))[1] < MAX_MOVE_Y:
                 new_ll = self.screen_to_geo((IMAGE_SIZE[0] / 2, 0))
-            # self.ll[1] -= k
         try:
             self.ll = new_ll[:]
         except Exception:
