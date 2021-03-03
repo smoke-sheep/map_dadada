@@ -1,6 +1,7 @@
 import sys
 from io import BytesIO
 import requests
+from pprint import pprint
 
 
 def find_businesses(place, ll, spn, locale='ru_RU'):
@@ -30,5 +31,5 @@ def find_business(place, ll, spn, locale='ru_RU'):
     orgs = find_businesses(place, ll, spn, locale)
     print("busines: ", end="")
     if orgs:
-        print(orgs)
+        pprint(orgs[0])
         return orgs[0]
