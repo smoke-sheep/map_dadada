@@ -1,5 +1,5 @@
 from basicDetails import *
-from main_map import ADDRESS_NOT_FOUND, formatted_address
+from main_map import formatted_address
 from mapStream import mapStream
 from business import *
 from geocoder import *
@@ -25,7 +25,7 @@ class MapWidget(QtWidgets.QMainWindow):
         self.initUi()
 
     def initUi(self):
-        self.map_image.setPixmap(QPixmap("Wait_img.jpg"))
+        # self.map_image.setPixmap(QPixmap("Wait_img.jpg"))
 
         for i in range(0, 3):
             getattr(self, f"radioButton_{i}").clicked.connect(self.radio_button_clicked)
@@ -50,6 +50,7 @@ class MapWidget(QtWidgets.QMainWindow):
         self.operate_map.mapError.connect(self.map_error)
         self.thread.started.connect(self.operate_map.run)
         self.thread.start()  # запустим поток
+        self.operate_map.find_adress(self.address)
 
     @QtCore.pyqtSlot(str)
     def map_error(self, data):
@@ -116,6 +117,9 @@ class MapWidget(QtWidgets.QMainWindow):
             self.operate_map.move("left")
         elif event.key() == Qt.Key_Right:
             self.operate_map.move("right")
+        # код клавиши Enter, не нашёл как она называется
+        elif event.key() == 16777220:
+            self.line_request()
         else:
             print(event.key())
 
@@ -138,12 +142,21 @@ class MapWidget(QtWidgets.QMainWindow):
         elif event.button() == Qt.RightButton:
             try:
                 print("поиск организации")
-                org = find_business(self.organisation_type, f'{x},{y}', '0.00045045045,0.00045045045')['properties']['CompanyMetaData']['name']
-                print(org)
+                org = find_business(self.organisation_type, f'{x},{y}', '0.0004545454,0.0004545454')
+                org_out = org['properties']['description'] + ', ' + org['properties']['CompanyMetaData']['name']
+                # 111 0000 / 50 = 1 градус к х(количеству градусов, которые охватывают 50м)
+                xorg, yorg = list(map(float, org['geometry']['coordinates']))
+                # поставил примерно 100 метров для поиска, потому что 50 это очень мало
+                # и неудобно
+                if abs(x - xorg) > 0.0008545454 or abs(y - yorg) > 0.0008545454:
+                    org_out = None
+
+                print(org_out)
             except TypeError:
                 org = None
-            self.full_address_line.setText(org if org else 'Организация не найдена')
-
+            # self.full_address_line.setText(org_out if org_out else 'Организация не найдена')
+            # self.operate_map.find_adress(org['properties']['description'])
+            self.full_address_line.setText(org_out if org_out else 'Организация не найдена')
         self.operate_map.draw_picture()
         self.print_image(False)
 
